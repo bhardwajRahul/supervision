@@ -13,11 +13,14 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: check-yaml
-        exclude: mkdocs.yml
+        args: ["--unsafe"]
       - id: check-executables-have-shebangs
+      - id: check-json
       - id: check-toml
       - id: check-case-conflict
       - id: check-added-large-files
+        args: ["--maxkb=500", "--enforce-all"]
+        exclude: uv.lock|.*\.ipynb$
       - id: detect-private-key
       - id: pretty-format-json
         exclude: demo.ipynb
@@ -47,7 +50,7 @@ repos:
     rev: v0.15.11
     hooks:
       - id: ruff-check
-        args: [--fix]
+        args: ["--fix"]
       - id: ruff-format
         types_or: [python, pyi, jupyter]
 
