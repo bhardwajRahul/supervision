@@ -19,6 +19,7 @@ from supervision.detection.tools.transformers import (
     process_transformers_v4_segmentation_result,
     process_transformers_v5_segmentation_result,
 )
+from supervision.detection.utils.boxes import obb_polygon_area
 from supervision.detection.utils.converters import (
     mask_to_xyxy,
     polygon_to_mask,
@@ -2366,20 +2367,49 @@ class Detections:
     def area(self) -> npt.NDArray[np.generic]:
         """
         Calculate the area of each detection in the set of object detections.
-        If masks field is defined property returns are of each mask.
-        If only box is given property return area of each box.
+
+        Selection order:
+
+        1. If ``mask`` is set, return the area of each mask.
+        2. Else, if ``data[ORIENTED_BOX_COORDINATES]`` is set, return the area of
+           the rotated body (shoelace formula on the four corners).
+        3. Otherwise, return the axis-aligned box area (``box_area``).
+
+        **OBB dispatch contract**: presence of ``data[ORIENTED_BOX_COORDINATES]``
+        with shape ``(N, 4, 2)`` is the canonical signal that a detection carries
+        oriented bounding box geometry. The same presence-of-key check governs
+        ``with_nms``, ``with_nmm``, and this property — always store OBB corners
+        under ``config.ORIENTED_BOX_COORDINATES`` with that shape.
+
+        **Return dtype**: ``float64`` (OBB branch), input dtype (AABB fallback),
+        ``int64`` (mask branch).
 
         Returns:
-            An array of floats containing the area of each detection
+            An array containing the area of each detection
                 in the format of `(area_1, area_2, ..., area_n)`,
                 where n is the number of detections.
+
+        Example:
+            >>> import numpy as np
+            >>> import supervision as sv
+            >>> corners = np.array(
+            ...     [[[0, 5], [5, 10], [10, 5], [5, 0]]], dtype=np.float32
+            ... )
+            >>> detections = sv.Detections(
+            ...     xyxy=np.array([[0, 0, 10, 10]], dtype=np.float32),
+            ...     class_id=np.array([0]),
+            ...     data={"xyxyxyxy": corners},
+            ... )
+            >>> detections.area
+            array([50.])
         """
         if self.mask is not None:
             if isinstance(self.mask, CompactMask):
                 return self.mask.area
             return np.array([np.sum(mask) for mask in self.mask])
-        else:
-            return self.box_area
+        if ORIENTED_BOX_COORDINATES in self.data:
+            return obb_polygon_area(self.data[ORIENTED_BOX_COORDINATES])
+        return self.box_area
 
     @property
     def box_area(self) -> npt.NDArray[np.generic]:
