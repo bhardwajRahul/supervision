@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 from deprecate import deprecated, void
@@ -104,6 +104,7 @@ def validate_class_id(class_id: Any, n: int) -> None:
 
 
 def _validate_confidence(confidence: Any, n: int) -> None:
+    """Validate detection-level confidence: 1D ``np.ndarray`` with shape ``(n,)``."""
     expected_shape = f"({n},)"
     actual_shape = str(getattr(confidence, "shape", None))
     is_valid = confidence is None or (
@@ -126,14 +127,23 @@ def validate_confidence(confidence: Any, n: int) -> None:
 
 
 def _validate_keypoint_confidence(confidence: Any, n: int, m: int) -> None:
-    expected_shape = f"({n}, {m})"
+    """Validate per-keypoint confidence: 2D ``np.ndarray`` with shape ``(n, m)``."""
     actual_shape = str(getattr(confidence, "shape", None))
 
     if confidence is not None:
-        is_valid = isinstance(confidence, np.ndarray) and confidence.shape == (n, m)
-        if not is_valid:
+        if not isinstance(confidence, np.ndarray) or confidence.ndim != 2:
             raise ValueError(
-                f"confidence must be a 2D np.ndarray with shape {expected_shape}, but "
+                f"keypoint_confidence must be a 2D np.ndarray with shape (n, m), but "
+                f"got shape {actual_shape}"
+            )
+        if confidence.shape[0] != n:
+            raise ValueError(
+                f"keypoint_confidence first dimension must be {n}, "
+                f"but got shape {actual_shape}"
+            )
+        if n > 0 and confidence.shape[1] != m:
+            raise ValueError(
+                f"keypoint_confidence second dimension must be {m}, but "
                 f"got shape {actual_shape}"
             )
 
@@ -207,10 +217,7 @@ def _validate_xy(xy: Any, n: int, m: int) -> None:
     expected_shape = f"({n}, {m}, 2) or ({n}, {m}, 3)"
     actual_shape = str(getattr(xy, "shape", None))
 
-    is_valid = isinstance(xy, np.ndarray) and (
-        xy.shape == (n, m, 2) or xy.shape == (n, m, 3)
-    )
-    if not is_valid:
+    if not isinstance(xy, np.ndarray) or xy.ndim != 3 or xy.shape[2] not in (2, 3):
         raise ValueError(
             f"xy must be a 3D np.ndarray with shape {expected_shape}, but got shape "
             f"{actual_shape}"
@@ -224,6 +231,29 @@ def _validate_xy(xy: Any, n: int, m: int) -> None:
 )
 def validate_xy(xy: Any, n: int, m: int) -> None:
     void(xy, n, m)
+
+
+def _validate_visible(visible: Any, n: int, m: int) -> None:
+    """Validate per-keypoint visibility mask.
+
+    Expects a 2D bool ``np.ndarray`` with shape ``(n, m)``.
+    """
+    if visible is None:
+        return
+    actual_shape = str(getattr(visible, "shape", None))
+    if not isinstance(visible, np.ndarray) or visible.ndim != 2:
+        raise ValueError(
+            "visible must be a 2D np.ndarray with shape (n, m), but "
+            f"got shape {actual_shape}"
+        )
+    if visible.shape[0] != n:
+        raise ValueError(
+            f"visible first dimension must be {n}, but got shape {actual_shape}"
+        )
+    if n > 0 and visible.shape[1] != m:
+        raise ValueError(
+            f"visible second dimension must be {m}, but got shape {actual_shape}"
+        )
 
 
 def _validate_detections_fields(
@@ -263,14 +293,20 @@ def _validate_keypoints_fields(
     xy: Any,
     class_id: Any,
     confidence: Any,
-    data: dict[str, Any],
+    detection_confidence: Any = None,
+    visible: Any = None,
+    data: Optional[dict[str, Any]] = None,
 ) -> None:
     n = len(xy)
     m = len(xy[0]) if len(xy) > 0 else 0
     _validate_xy(xy, n, m)
     _validate_class_id(class_id, n)
     _validate_keypoint_confidence(confidence, n, m)
-    _validate_data(data, n)
+    if detection_confidence is not None:
+        _validate_confidence(detection_confidence, n)
+    _validate_visible(visible, n, m)
+    if data is not None:
+        _validate_data(data, n)
 
 
 @deprecated(  # type: ignore[untyped-decorator]
