@@ -31,6 +31,8 @@ date_modified: 2026-06-16
 
 - Performance [#2339](https://github.com/roboflow/supervision/pull/2339): `sv.HaloAnnotator` now uses the same CompactMask painting path as `sv.MaskAnnotator` via a shared `_paint_masks_by_area` helper. On a 1080p frame with 30 CompactMask detections, `HaloAnnotator` runs approximately 4× faster; annotated output is unchanged.
 
+- Added [#2284](https://github.com/roboflow/supervision/pull/2284): [`DetectionDataset.from_createml`](https://supervision.roboflow.com/latest/datasets/core/#supervision.dataset.core.DetectionDataset.from_createml) and [`DetectionDataset.as_createml`](https://supervision.roboflow.com/latest/datasets/core/#supervision.dataset.core.DetectionDataset.as_createml) add load and export support for the CreateML object-detection JSON format, alongside the existing COCO, YOLO, and Pascal VOC formats.
+
 - Performance [#2330](https://github.com/roboflow/supervision/pull/2330): `sv.mask_to_xyxy` and `sv.KeyPoints.as_detections` are now vectorized. `mask_to_xyxy` uses batched occupancy-profile reductions instead of per-mask pixel scans; `KeyPoints.as_detections` computes all bounding boxes in a single batch operation. Both produce bit-identical results.
 
 - Performance [#2323](https://github.com/roboflow/supervision/pull/2323): Mask IoU computation now uses matrix multiplication on flattened masks instead of an explicit `(N, M, H, W)` intersection tensor, reducing peak memory for large mask sets. For masks larger than 4096×4096 pixels, computation automatically promotes to float64 to preserve exact pixel counts. Results are numerically identical.
