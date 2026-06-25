@@ -264,33 +264,33 @@ class TestLoadLabelmeAnnotations:
         assert detections.mask.shape == (1, 48, 64)
         assert detections.mask[0, 15:25, 15:25].all()
 
-    def test_polygon_shapes_require_image_dims(self, tmp_path: Path) -> None:
-        """Polygon shapes raise ValueError when imageWidth/imageHeight missing."""
-        payload = {
-            "shapes": [_polygon("cat", [[1, 1], [5, 1], [5, 5], [1, 5]])],
-            "imagePath": "a.jpg",
-        }
+    @pytest.mark.parametrize(
+        ("shapes", "force_masks"),
+        [
+            pytest.param(
+                [_polygon("cat", [[1, 1], [5, 1], [5, 5], [1, 5]])],
+                False,
+                id="polygon-shape",
+            ),
+            pytest.param(
+                [_rectangle("dog", 10, 10, 30, 30)],
+                True,
+                id="force-masks-rectangle",
+            ),
+        ],
+    )
+    def test_requires_image_dims_when_mask_needed(
+        self, tmp_path: Path, shapes: list[dict], force_masks: bool
+    ) -> None:
+        """ValueError raised when mask rasterisation required but image dims missing."""
+        payload = {"shapes": shapes, "imagePath": "a.jpg"}
         (tmp_path / "a.json").write_text(json.dumps(payload))
 
         with pytest.raises(ValueError, match="imageWidth"):
             load_labelme_annotations(
                 images_directory_path=str(tmp_path),
                 annotations_directory_path=str(tmp_path),
-            )
-
-    def test_force_masks_requires_image_dims(self, tmp_path: Path) -> None:
-        """force_masks=True raises ValueError when imageWidth/imageHeight missing."""
-        payload = {
-            "shapes": [_rectangle("dog", 10, 10, 30, 30)],
-            "imagePath": "a.jpg",
-        }
-        (tmp_path / "a.json").write_text(json.dumps(payload))
-
-        with pytest.raises(ValueError, match="imageWidth"):
-            load_labelme_annotations(
-                images_directory_path=str(tmp_path),
-                annotations_directory_path=str(tmp_path),
-                force_masks=True,
+                force_masks=force_masks,
             )
 
     def test_mixed_rectangle_and_polygon(self, tmp_path: Path) -> None:
