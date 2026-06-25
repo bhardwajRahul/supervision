@@ -1,6 +1,6 @@
 ---
 comments: true
-description: Load, split, merge, and convert computer vision datasets between YOLO, COCO, Pascal VOC, and CreateML formats using supervision's DetectionDataset.
+description: Load, split, merge, and convert computer vision datasets between YOLO, COCO, Pascal VOC, CreateML, and LabelMe formats using supervision's DetectionDataset.
 authors:
   - name: Piotr Skalski
     role: Computer Vision Engineer, Roboflow
@@ -12,13 +12,13 @@ With Supervision, you can load and manipulate classification, object detection, 
 
 ## Download Dataset
 
-In this tutorial, we will use a dataset from [Roboflow Universe](https://universe.roboflow.com/), a public repository of thousands of computer vision datasets. If you already have your dataset in [COCO](https://roboflow.com/formats/coco-json), [YOLO](https://roboflow.com/formats/yolov8-pytorch-txt), [Pascal VOC](https://roboflow.com/formats/pascal-voc-xml), or [CreateML](https://roboflow.com/formats/createml-json) format, you can skip this section.
+In this tutorial, we will use a dataset from [Roboflow Universe](https://universe.roboflow.com/), a public repository of thousands of computer vision datasets. If you already have your dataset in [COCO](https://roboflow.com/formats/coco-json), [YOLO](https://roboflow.com/formats/yolov8-pytorch-txt), [Pascal VOC](https://roboflow.com/formats/pascal-voc-xml), [CreateML](https://roboflow.com/formats/createml-json), or [LabelMe](https://roboflow.com/formats/labelme-json) format, you can skip this section.
 
 ```bash
 pip install roboflow
 ```
 
-Next, log into your Roboflow account and download the dataset of your choice in the COCO, YOLO, Pascal VOC, or CreateML format. You can customize the following code snippet with your workspace ID, project ID, and version number.
+Next, log into your Roboflow account and download the dataset of your choice. The following snippets show common COCO, YOLO, Pascal VOC, and CreateML exports; LabelMe datasets can also be loaded directly from per-image JSON files in the next section. You can customize the code with your workspace ID, project ID, and version number.
 
 === "COCO"
 
@@ -174,6 +174,33 @@ The Supervision library provides convenient functions to load datasets in variou
     ds_test = sv.DetectionDataset.from_createml(
         images_directory_path=f"{dataset.location}/test",
         annotations_path=f"{dataset.location}/test/_annotations.createml.json",
+    )
+
+    ds_train.classes
+    # ['person', 'bicycle', 'car', ...]
+
+    len(ds_train), len(ds_valid), len(ds_test)
+    # 800, 100, 100
+    ```
+
+=== "LabelMe"
+
+    We can do so using the [`sv.DetectionDataset.from_labelme`](https://supervision.roboflow.com/latest/datasets/core/#supervision.dataset.core.DetectionDataset.from_labelme) to load annotations in [LabelMe](https://roboflow.com/formats/labelme-json) format. LabelMe `rectangle` shapes are loaded as bounding boxes and `polygon` shapes are loaded as masks with bounding boxes.
+
+    ```python
+    import supervision as sv
+
+    ds_train = sv.DetectionDataset.from_labelme(
+        images_directory_path="<TRAIN_IMAGES_DIRECTORY_PATH>",
+        annotations_directory_path="<TRAIN_ANNOTATIONS_DIRECTORY_PATH>",
+    )
+    ds_valid = sv.DetectionDataset.from_labelme(
+        images_directory_path="<VALID_IMAGES_DIRECTORY_PATH>",
+        annotations_directory_path="<VALID_ANNOTATIONS_DIRECTORY_PATH>",
+    )
+    ds_test = sv.DetectionDataset.from_labelme(
+        images_directory_path="<TEST_IMAGES_DIRECTORY_PATH>",
+        annotations_directory_path="<TEST_ANNOTATIONS_DIRECTORY_PATH>",
     )
 
     ds_train.classes
@@ -341,6 +368,39 @@ If you have multiple datasets that you would like to merge, you can do so using 
     # 1000
     ```
 
+=== "LabelMe"
+
+    ```{ .py hl_lines="22-28" }
+    import supervision as sv
+
+    ds_train = sv.DetectionDataset.from_labelme(
+        images_directory_path="<TRAIN_IMAGES_DIRECTORY_PATH>",
+        annotations_directory_path="<TRAIN_ANNOTATIONS_DIRECTORY_PATH>",
+    )
+    ds_valid = sv.DetectionDataset.from_labelme(
+        images_directory_path="<VALID_IMAGES_DIRECTORY_PATH>",
+        annotations_directory_path="<VALID_ANNOTATIONS_DIRECTORY_PATH>",
+    )
+    ds_test = sv.DetectionDataset.from_labelme(
+        images_directory_path="<TEST_IMAGES_DIRECTORY_PATH>",
+        annotations_directory_path="<TEST_ANNOTATIONS_DIRECTORY_PATH>",
+    )
+
+    ds_train.classes
+    # ['person', 'bicycle', 'car', ...]
+
+    len(ds_train), len(ds_valid), len(ds_test)
+    # 800, 100, 100
+
+    ds = sv.DetectionDataset.merge([ds_train, ds_valid, ds_test])
+
+    ds.classes
+    # ['person', 'bicycle', 'car', ...]
+
+    len(ds)
+    # 1000
+    ```
+
 ## Iterate over Dataset
 
 There are two ways to loop over a `sv.DetectionDataset`: using a direct [for loop](https://supervision.roboflow.com/latest/datasets/core/#supervision.dataset.core.DetectionDataset.__iter__) called on the `sv.DetectionDataset` instance or loading `sv.DetectionDataset` entries [by index](https://supervision.roboflow.com/latest/datasets/core/#supervision.dataset.core.DetectionDataset.__getitem__).
@@ -454,6 +514,21 @@ sv.plot_images_grid(
     )
     ```
 
+=== "LabelMe"
+
+    We can do so using the [`sv.DetectionDataset.as_labelme`](https://supervision.roboflow.com/latest/datasets/core/#supervision.dataset.core.DetectionDataset.as_labelme) method to save annotations in [LabelMe](https://roboflow.com/formats/labelme-json) format. Detections with masks are exported as `polygon` shapes; box-only detections are exported as `rectangle` shapes.
+
+    ```python
+    import supervision as sv
+
+    ds = sv.DetectionDataset(...)
+
+    ds.as_labelme(
+        images_directory_path="<IMAGE_DIRECTORY_PATH>",
+        annotations_directory_path="<ANNOTATIONS_DIRECTORY_PATH>",
+    )
+    ```
+
 ## Augment Dataset
 
 In this section, we'll explore using Supervision in combination with Albumentations to augment our dataset. Data augmentation is a common technique in computer vision to increase the size and diversity of training datasets, leading to improved model performance and generalization.
@@ -511,7 +586,7 @@ augmented_annotations = replace(
 
 ### What dataset formats does supervision support?
 
-For detection datasets, supervision supports YOLO, COCO JSON, Pascal VOC, and CreateML. Use `DetectionDataset.from_yolo()`, `from_coco()`, `from_pascal_voc()`, or `from_createml()` to load, and `as_yolo()`, `as_coco()`, `as_pascal_voc()`, or `as_createml()` to save. Classification datasets use `ClassificationDataset.from_folder_structure()` and `as_folder_structure()`.
+For detection datasets, supervision supports YOLO, COCO JSON, Pascal VOC, CreateML, and LabelMe. Use `DetectionDataset.from_yolo()`, `from_coco()`, `from_pascal_voc()`, `from_createml()`, or `from_labelme()` to load, and `as_yolo()`, `as_coco()`, `as_pascal_voc()`, `as_createml()`, or `as_labelme()` to save. Classification datasets use `ClassificationDataset.from_folder_structure()` and `as_folder_structure()`.
 
 ### Can I split a dataset into train/val/test sets?
 

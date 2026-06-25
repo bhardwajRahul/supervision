@@ -1,6 +1,6 @@
 ---
 description: "Full version history of the supervision Python library — release notes, breaking changes, new features, and deprecations for every version."
-date_modified: 2026-06-16
+date_modified: 2026-06-25
 ---
 
 # Changelog
@@ -10,8 +10,6 @@ date_modified: 2026-06-16
 - Added [#2275](https://github.com/roboflow/supervision/pull/2275): `show_progress: bool = False` parameter to all `sv.DetectionDataset` load and save methods — `from_coco`, `from_yolo`, `from_pascal_voc`, `as_coco`, `as_yolo`, `as_pascal_voc`, and `save_dataset_images`. When `True`, a `tqdm.auto` progress bar is shown (works in terminal and Jupyter). Defaults to `False` for full backward compatibility; no new dependencies.
 
 - Added [#2027](https://github.com/roboflow/supervision/issues/2027): [`sv.InferenceSlicer`](https://supervision.roboflow.com/latest/detection/tools/inference_slicer/#supervision.detection.tools.inference_slicer.InferenceSlicer) now accepts an open rasterio-style dataset in addition to in-memory images. Each tile is read lazily via a windowed read instead of loading the whole image, enabling tiled inference on multi-GB aerial/drone GeoTIFFs without running out of memory. Detection is duck-typed, so `rasterio` stays an optional dependency installable via `pip install "supervision[geotiff]"` and the core library imports no rasterio symbols. A geographic (non-projected) CRS raises `ValueError`.
-
-### 0.29.1 <small>Jun 23, 2026</small>
 
 - Added [#2338](https://github.com/roboflow/supervision/pull/2338): [`sv.KeyPoints.with_nms`](https://supervision.roboflow.com/latest/keypoint/core/#supervision.key_points.core.KeyPoints.with_nms) — non-maximum suppression for keypoint detections. Derives axis-aligned bounding boxes from valid (non-zero and visible) keypoints and applies `box_non_max_suppression`. Requires `detection_confidence`; supports class-aware and class-agnostic modes via `threshold`, `class_agnostic`, and `overlap_metric`.
 
@@ -26,6 +24,8 @@ date_modified: 2026-06-16
 - Fixed [#2332](https://github.com/roboflow/supervision/pull/2332): `sv.approximate_polygon` now returns a polygon within the requested point-count budget (at most `floor(N * (1 - percentage))` points, minimum 3). The function now also validates that `epsilon_step > 0`.
 
 - Fixed [#2331](https://github.com/roboflow/supervision/pull/2331): `sv.Precision` and `sv.F1Score` now count predictions on background images (empty target set) as false positives, and count predictions of classes absent from ground truth as false positives under `MICRO` and `MACRO` averaging. Previously both edge cases were silently ignored, inflating scores. `WEIGHTED` averaging is unchanged — absent classes retain weight 0, consistent with scikit-learn. Users relying on previous scores should re-evaluate after upgrading; no API change is required.
+
+- Added [#2299](https://github.com/roboflow/supervision/pull/2299): [`DetectionDataset.from_labelme`](https://supervision.roboflow.com/latest/datasets/core/#supervision.dataset.core.DetectionDataset.from_labelme) and [`DetectionDataset.as_labelme`](https://supervision.roboflow.com/latest/datasets/core/#supervision.dataset.core.DetectionDataset.as_labelme) for loading and exporting [LabelMe](https://github.com/wkentaro/labelme) per-image JSON annotations, following the existing COCO/YOLO/VOC convention. `rectangle` shapes load as boxes and `polygon` shapes as masks; unsupported shape types are skipped with a warning. The mask round-trip is a polygon approximation, not bit-exact.
 
 - Fixed [#2322](https://github.com/roboflow/supervision/pull/2322): COCO export now preserves all polygon parts for multi-component masks. Previously, only the first polygon was written when a non-crowd mask had disjoint segments; all parts are now included.
 
